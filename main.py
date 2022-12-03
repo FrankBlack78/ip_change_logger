@@ -2,7 +2,7 @@
 from datetime import datetime
 import json
 import os
-from functions import send_email
+from f_signal import send_email
 import f_getip
 
 """
