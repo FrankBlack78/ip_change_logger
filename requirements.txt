@@ -1,3 +1,5 @@
 fritzconnection==1.10.3
 sendgrid==6.9.7
 python-dotenv==0.21.0
+requests==2.28.1
+upnpclient==1.0.3

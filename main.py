@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-from fritzconnection.lib.fritzstatus import FritzStatus
 from datetime import datetime
 import json
 import os
 from functions import send_email
+import f_getip
+
+"""
+Which function of getting the public ip-address should be used?
+Allowed are: getip_fritz, getip_ipify, getip_upnp
+"""
+GETIP = 'getip_fritz'
 
 """
 Sending of emails can be activated or deactivated.
-If activated a verified email-address with SendGrid and one or more recepients should be defined.
+If activated a verified sender email-address with SendGrid and one or more recepients have to be defined.
 """
-SEND_MAIL = 'no'
+SEND_MAIL = False
 VERIFIED_SENDER = 'verifiedsender@test.com'
 MAIL_RECIPIENTS = [
     'recipient@test.com'
@@ -31,41 +37,45 @@ def main() -> 0:
     except FileNotFoundError:
         past_data = {"datetime": "", "public_ip": ""}
 
-    # Get current public ip-address of the FRITZ!Box
-    public_ip = FritzStatus(address='192.168.178.1').external_ip
-
     # Create current data
-    current_data = {"datetime": str(datetime.now()), "public_ip": public_ip}
+    if GETIP == 'getip_fritz':
+        current_data = f_getip.getip_fritz()
+    elif GETIP == 'getip_ipify':
+        current_data = f_getip.getip_ipify()
+    elif GETIP == 'getip_upnp':
+        current_data = f_getip.getip_upnp()
+    else:
+        return 1
 
     # Compare past data with current data
     if past_data['public_ip'] == current_data['public_ip']:
         current_timestamp = datetime.strptime(current_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
         past_timestamp = datetime.strptime(past_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
         diff_time = current_timestamp - past_timestamp
-        print(f'Same IP-address since {str(diff_time)} (HH:MM:SS).')
-        if SEND_MAIL == 'yes':
+        print(f'Same public IP-address ({current_data["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
+        if SEND_MAIL:
             for recipient in MAIL_RECIPIENTS:
                 send_email(VERIFIED_SENDER,
                            recipient,
                            'Same public IP-address',
-                           f'Same IP-address since {str(diff_time)} (HH:MM:SS).')
+                           f'Same public IP-address ({current_data["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
     else:
         # Calculate time-difference between old and new datetime
         current_timestamp = datetime.strptime(current_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
         past_timestamp = datetime.strptime(past_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
         diff_time = current_timestamp - past_timestamp
-        print(f'Old IP-address was valid for {str(diff_time)} (HH:MM:SS).')
+        print(f'Old IP-address ({past_data["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).')
         # Save current-data as JSON-data to filepath
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(current_data, f, ensure_ascii=False, indent=4)
-        print(f'NEW PUBLIC IP: {public_ip}')
-        if SEND_MAIL == 'yes':
+        print(f'New public IP-address: {current_data["public_ip"]}')
+        if SEND_MAIL:
             for recipient in MAIL_RECIPIENTS:
                 send_email(VERIFIED_SENDER,
                            recipient,
                            'New public IP-address',
-                           f'Old IP-address was valid for {str(diff_time)} (HH:MM:SS).\n'
-                           f'New public IP-address: {public_ip}')
+                           f'Old IP-address ({past_data["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).\n'
+                           f'New public IP-address: {current_data["public_ip"]}')
     return 0
 
 
