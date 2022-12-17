@@ -23,9 +23,8 @@ one function (E-Mail via SendGrid) but further development is on the way. You ca
 you at the top of the main.py file.
 
 ### data.json
-In this file is currently tracked the last time a change of the public ip-address is recognized. It is planned to
-change this in future releases and record all results every time the script runs. The file is created when the program
-runs for the first time.
+This file stores every result of the getip-function. Data is not deleted so you have a complete history right there.
+The file is created when the program runs for the first time.
 
 ### .env
 At several points the storing of credentials is sometimes unavoidable. Credentials like API keys will be stored in
@@ -39,4 +38,4 @@ At the moment the following environment variable are in use:
 GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
 
 ## Version
-V 1.0.0
+V 1.1.0

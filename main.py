@@ -21,7 +21,6 @@ MAIL_RECIPIENTS = [
     'recipient@test.com'
 ]
 
-
 def main() -> 0:
     """
     Main-Loop
@@ -30,52 +29,74 @@ def main() -> 0:
     # Define filepath where to store information about the public ip-address
     filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data.json')
 
-    # Try to open the file and read past data. If file does not exist, create dictionary with keys but no values.
+    # Try to open the file and read past data. If file does not exist, create empty data list.
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             past_data = json.load(f)
     except FileNotFoundError:
-        past_data = {"datetime": "", "public_ip": ""}
+        past_data = []
 
-    # Create current data
+    # Find the latest record in past data
+    latest_past_data_record = {}
+    if len(past_data) > 0:
+        dt_list = []
+        for ds in past_data:
+            dt_list.append(datetime.strptime(ds['datetime'], '%Y-%m-%d %H:%M:%S.%f'))
+        for idx, ds in enumerate(past_data):
+            if max(dt_list) == datetime.strptime(ds['datetime'], '%Y-%m-%d %H:%M:%S.%f'):
+                latest_past_data_record = past_data[idx]
+
+    # Get current data
     if GETIP == 'getip_fritz':
-        current_data = f_getip.getip_fritz()
+        current_data = [f_getip.getip_fritz()]
     elif GETIP == 'getip_ipify':
-        current_data = f_getip.getip_ipify()
+        current_data = [f_getip.getip_ipify()]
     elif GETIP == 'getip_upnp':
-        current_data = f_getip.getip_upnp()
+        current_data = [f_getip.getip_upnp()]
     else:
         return 1
+    current_data_record = current_data[0]
 
-    # Compare past data with current data
-    if past_data['public_ip'] == current_data['public_ip']:
-        current_timestamp = datetime.strptime(current_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
-        past_timestamp = datetime.strptime(past_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
-        diff_time = current_timestamp - past_timestamp
-        print(f'Same public IP-address ({current_data["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
-        if SEND_MAIL:
-            for recipient in MAIL_RECIPIENTS:
-                send_email(VERIFIED_SENDER,
-                           recipient,
-                           'Same public IP-address',
-                           f'Same public IP-address ({current_data["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
-    else:
-        # Calculate time-difference between old and new datetime
-        current_timestamp = datetime.strptime(current_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
-        past_timestamp = datetime.strptime(past_data['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
-        diff_time = current_timestamp - past_timestamp
-        print(f'Old IP-address ({past_data["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).')
-        # Save current-data as JSON-data to filepath
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(current_data, f, ensure_ascii=False, indent=4)
-        print(f'New public IP-address: {current_data["public_ip"]}')
+    # Write data to file
+    data = past_data + current_data
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+    # Compare past data with current data and signal
+    # No past data available
+    if len(latest_past_data_record) == 0:
+        print(f'No past data. New public IP-address ({current_data_record["public_ip"]}).')
         if SEND_MAIL:
             for recipient in MAIL_RECIPIENTS:
                 send_email(VERIFIED_SENDER,
                            recipient,
                            'New public IP-address',
-                           f'Old IP-address ({past_data["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).\n'
-                           f'New public IP-address: {current_data["public_ip"]}')
+                           f'No past data. New public IP-address ({current_data_record["public_ip"]}).')
+    # Past data available
+    else:
+        current_timestamp = datetime.strptime(current_data_record['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
+        past_timestamp = datetime.strptime(latest_past_data_record['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
+        diff_time = current_timestamp - past_timestamp
+        # Unchanged past data
+        if latest_past_data_record['public_ip'] == current_data_record['public_ip']:
+            print(f'Same public IP-address ({current_data_record["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
+            if SEND_MAIL:
+                for recipient in MAIL_RECIPIENTS:
+                    send_email(VERIFIED_SENDER,
+                               recipient,
+                               'Same public IP-address',
+                               f'Same public IP-address ({current_data_record["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
+        # Changed past data
+        elif latest_past_data_record['public_ip'] != current_data_record['public_ip']:
+            print(f'Old IP-address ({latest_past_data_record["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).')
+            print(f'New public IP-address: {current_data_record["public_ip"]}')
+            if SEND_MAIL:
+                for recipient in MAIL_RECIPIENTS:
+                    send_email(VERIFIED_SENDER,
+                               recipient,
+                               'New public IP-address',
+                               f'Old IP-address ({latest_past_data_record["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).\n'
+                               f'New public IP-address: {current_data_record["public_ip"]}')
     return 0
 
 
