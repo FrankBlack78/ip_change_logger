@@ -4,22 +4,17 @@ import json
 import os
 from f_signal import send_email
 import f_getip
+import configparser
 
-"""
-Which function of getting the public ip-address should be used?
-Allowed are: getip_fritz, getip_ipify, getip_upnp
-"""
-GETIP = 'getip_fritz'
+# Global variables (Defined in config.ini)
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-"""
-Sending of emails can be activated or deactivated.
-If activated a verified sender email-address with SendGrid and one or more recepients have to be defined.
-"""
-SEND_MAIL = False
-VERIFIED_SENDER = 'verifiedsender@test.com'
-MAIL_RECIPIENTS = [
-    'recipient@test.com'
-]
+GETIP = config['f_getip']['GETIP']
+SEND_MAIL = config['f_signal'].getboolean('SEND_MAIL')
+VERIFIED_SENDER = config['f_signal']['VERIFIED_SENDER']
+MAIL_RECIPIENTS = config['f_signal']['MAIL_RECIPIENTS'].split()
+
 
 def main() -> 0:
     """
