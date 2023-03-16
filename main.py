@@ -52,12 +52,12 @@ def main() -> 0:
         return 1
     current_data_record = current_data[0]
 
-    # Write data to file
+    # Write current data to file
     data = past_data + current_data
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-    # Compare past data with current data and signal
+    # Compare past data with current data, determine outcome and signal
     # No past data available
     if len(latest_past_data_record) == 0:
         print(f'No past data. New public IP-address ({current_data_record["public_ip"]}).')
@@ -69,20 +69,30 @@ def main() -> 0:
                            f'No past data. New public IP-address ({current_data_record["public_ip"]}).')
     # Past data available
     else:
+        # Sort past data in descending order
+        past_data.sort(key=lambda x: datetime.strptime(x['datetime'], '%Y-%m-%d %H:%M:%S.%f'), reverse=True)
+
+        # Determine oldest past data with identical public IP
+        oldest_past_data_record = dict()
+        for idx, ds in enumerate(past_data):
+            if ds['public_ip'] == latest_past_data_record['public_ip']:
+                oldest_past_data_record = ds
+            else:
+                break
+
+        # Get timestamps of the datasets
+        oldest_past_timestamp = datetime.strptime(oldest_past_data_record['datetime'].split('.')[0],
+                                                  '%Y-%m-%d %H:%M:%S')
+        latest_past_timestamp = datetime.strptime(latest_past_data_record['datetime'].split('.')[0],
+                                                  '%Y-%m-%d %H:%M:%S')
         current_timestamp = datetime.strptime(current_data_record['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
-        past_timestamp = datetime.strptime(latest_past_data_record['datetime'].split('.')[0], '%Y-%m-%d %H:%M:%S')
-        diff_time = current_timestamp - past_timestamp
-        # Unchanged past data
-        if latest_past_data_record['public_ip'] == current_data_record['public_ip']:
-            print(f'Same public IP-address ({current_data_record["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
-            if SEND_MAIL:
-                for recipient in MAIL_RECIPIENTS:
-                    send_email(VERIFIED_SENDER,
-                               recipient,
-                               'Same public IP-address',
-                               f'Same public IP-address ({current_data_record["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
-        # Changed past data
-        elif latest_past_data_record['public_ip'] != current_data_record['public_ip']:
+
+        # Changed public IP
+        if latest_past_data_record['public_ip'] != current_data_record['public_ip']:
+            # Calculate time difference
+            diff_time = latest_past_timestamp - oldest_past_timestamp
+
+            # Signal
             print(f'Old IP-address ({latest_past_data_record["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).')
             print(f'New public IP-address: {current_data_record["public_ip"]}')
             if SEND_MAIL:
@@ -92,6 +102,25 @@ def main() -> 0:
                                'New public IP-address',
                                f'Old IP-address ({latest_past_data_record["public_ip"]}) was valid for {str(diff_time)} (HH:MM:SS).\n'
                                f'New public IP-address: {current_data_record["public_ip"]}')
+
+        # Same public IP
+        elif latest_past_data_record['public_ip'] == current_data_record['public_ip']:
+            # Calculate time difference
+            diff_time = current_timestamp - oldest_past_timestamp
+
+            # Signal
+            print(f'Same public IP-address ({current_data_record["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
+            if SEND_MAIL:
+                for recipient in MAIL_RECIPIENTS:
+                    send_email(VERIFIED_SENDER,
+                               recipient,
+                               'Same public IP-address',
+                               f'Same public IP-address ({current_data_record["public_ip"]}) since {str(diff_time)} (HH:MM:SS).')
+
+        # Should not happen!
+        else:
+            return 1
+
     return 0
 
 

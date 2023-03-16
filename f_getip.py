@@ -5,10 +5,10 @@ import upnpclient
 
 """
 Several variants of the same function are provided below.
-Choose the one that suits your situation best and change the code in main.py accordingly.
+Choose the one that suits your situation best and change the code in config.ini accordingly.
 getip_fritz() can be used if the router is a Fritz!Box. The function is fast and doesn't require third party services.
 getip_ipify() can be used whatever router is used. The function is fast and uses the third party service ipify.
-getip_upnp() can be used whatever router is used. The funtion doesn't use third party services but is relatively slow.
+getip_upnp() can be used whatever router is used. The function doesn't use third party services but is relatively slow.
 All 3 function return a dictionary with 2 keys: datetime and public_ip.
 """
 
